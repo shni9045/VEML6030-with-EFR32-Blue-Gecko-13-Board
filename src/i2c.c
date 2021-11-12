@@ -11,11 +11,23 @@
 
 #include "src/log.h"
 
-// Si7021 I2C Address
-#define SI70_I2C_ADDR (0x40)
+// CCS811 I2C Address
+#define CCS811_I2C_ADDR (0xB4)
+
+#define CCS811_ADDR_APP_START (0xF4)
+
+#define CCS811_ADDR_STATUS (0x00)
+
+#define CCS811_ADDR_HW_ID (0x20)
+
+#define CCS811_ADDR_MEASURE_MODE (0x01)
+
+#define CCS811_HW_ID (0x81)
 
 // Measure temperature No Hold Master Mode
 #define MEASURE_TEMP_CMD (0xF3)
+
+
 
 void I2C_init(void){
 
@@ -44,6 +56,227 @@ void I2C_init(void){
 
 
 }
+
+void Enable_CCS811(bool state){
+
+  // Set Enable Pin high
+  if (state == true){
+
+      GPIO_PinOutSet(gpioPortD,15);
+
+  }
+
+  // Set Enable Pin low
+  else if (state == false){
+
+      GPIO_PinOutClear(gpioPortD,15);
+
+  }
+
+
+}
+
+void Wake_CCS811(bool state){
+
+  // Set Enable Pin high
+  if (state == true){
+
+      GPIO_PinOutSet(gpioPortD,15);
+
+  }
+
+  // Set Enable Pin low
+  else if (state == false){
+
+      GPIO_PinOutClear(gpioPortD,15);
+
+  }
+
+
+}
+
+
+
+uint32_t init_CCS811(void){
+
+  uint8_t id;
+  uint32_t check;
+
+  Enable_CCS811(true);
+  Wake_CCS811(true);
+
+
+  // Wait for Power up time
+  timerWaitUs(100000);
+
+
+  check  =  readMailbox_CCS811(CCS811_ADDR_HW_ID, 1, &id);
+
+  if (check != 1 && id != CCS811_HW_ID){
+
+      return 0;
+
+  }
+
+
+  Wake_CCS811(false);
+
+  return 1;
+
+
+}
+
+uint32_t readMailbox_CCS811(uint8_t id, uint8_t length, uint8_t *data){
+
+  I2C_TransferSeq_TypeDef seq;
+  I2C_TransferReturn_TypeDef ret;
+
+  uint32_t write_data[1];
+
+
+  Wake_CCS811(true);
+
+  write_data[0] = id;
+
+
+  seq.addr = CCS811_I2C_ADDR;
+  seq.flags = I2C_FLAG_WRITE_READ;
+  seq.buf[0].data = write_data;
+  seq.buf[0].len = 1;
+
+
+  seq.buf[1].data = data;
+  seq.buf[1].len = length;
+
+
+  ret = I2CSPM_Transfer(I2C0, &seq);
+
+  if (ret != i2cTransferDone){
+
+      LOG_ERROR("i2c transfer failed\r");
+      return 0;
+
+  }
+
+
+  Wake_CCS811(false);
+
+  return 1;
+
+}
+
+uint32_t setappmode_CCS811(void){
+
+  I2C_TransferSeq_TypeDef seq;
+  I2C_TransferReturn_TypeDef ret;
+
+  uint32_t read_data[2];
+  uint32_t write_data[1];
+
+  Wake_CCS811(true);
+
+  write_data[0] = CCS811_ADDR_APP_START;
+
+  seq.addr = CCS811_I2C_ADDR;
+  seq.flags = I2C_FLAG_WRITE;
+
+  seq.buf[0].data = write_data;
+  seq.buf[0].len = 1;
+
+  seq.buf[0].data = read_data;
+  seq.buf[0].len = 0;
+
+
+  ret = I2CSPM_Transfer(I2C0, &seq);
+
+   if (ret != i2cTransferDone){
+
+       LOG_ERROR("i2c transfer failed\r");
+       return 0;
+
+   }
+
+
+   Wake_CCS811(false);
+
+   return 1;
+
+}
+
+uint32_t startapp_CCS811(void){
+
+  uint32_t result;
+  uint8_t status;
+
+  result  = readMailbox_CCS811(CCS811_ADDR_STATUS, 1, &status);
+
+  if ((status & 0x10 ) != 0x10){
+
+    LOG_ERROR("Application Missing\r");
+    return 0;
+
+  }
+
+  result += setappmode_CCS811();
+
+  result = readMailbox_CCS811();
+
+  if ((status & 0x90 ) != 0x90){
+
+      LOG_ERROR("Error in setting Application Mode\r");
+      return 0;
+  }
+
+
+  return 1;
+
+
+}
+
+
+uint32_t setMode_CCS811(uint8_t mode){
+
+    I2C_TransferSeq_TypeDef seq;
+    I2C_TransferReturn_TypeDef ret;
+
+    uint32_t read_data[1];
+    uint32_t write_data[2];
+
+    Wake_CCS811(true);
+
+    mode = (mode & 0x38);
+
+    write_data[0] = CCS811_ADDR_MEASURE_MODE;
+
+    write_data[1] = mode;
+
+    seq.addr = CCS811_I2C_ADDR;
+    seq.flags = I2C_FLAG_WRITE;
+
+    seq.buf[0].data = write_data;
+    seq.buf[0].len = 2;
+
+    seq.buf[0].data = read_data;
+    seq.buf[0].len = 0;
+
+
+    ret = I2CSPM_Transfer(I2C0, &seq);
+
+     if (ret != i2cTransferDone){
+
+         LOG_ERROR("i2c transfer failed\r");
+         return 0;
+
+     }
+
+
+     Wake_CCS811(false);
+
+     return 1;
+
+
+}
+
 
 
 uint8_t* I2C_Read_Si7021(void){
@@ -152,24 +385,7 @@ bool I2C_Write_Si7021(void){
 }
 
 
-void Enable_si7021(bool state){
 
-  // Set Enable Pin high
-  if (state == true){
-
-      GPIO_PinOutSet(gpioPortD,15);
-
-  }
-
-  // Set Enable Pin low
-  else if (state == false){
-
-      GPIO_PinOutClear(gpioPortD,15);
-
-  }
-
-
-}
 
 uint16_t read_temp_si7021(void){
 

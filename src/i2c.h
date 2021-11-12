@@ -38,7 +38,7 @@ uint8_t* I2C_Read_Si7021(void);
  * PARAMTERS - NONE
  * RETURNS   - True for Success , False for failure
  */
-bool I2C_Write_Si7021(void);
+void Enable_CCS811(bool state);
 
 /*
  * Function to enable/disable Si7021
