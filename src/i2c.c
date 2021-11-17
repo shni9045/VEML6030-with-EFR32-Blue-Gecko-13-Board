@@ -337,7 +337,7 @@ bool dataavailaible( void ){
   uint32_t status2;
   uint8_t reg2;
 
-  status = readMailbox_CCS811(0x00, 1, &reg);
+  status = readMailbox_CCS811(CCS811_ADDR_STATUS, 1, &reg);
 
   if ((status == 1) && ((reg & 0x08) == 0x08)){
 

@@ -122,6 +122,8 @@ SL_WEAK void app_init(void)
 
   init_CCS811();
 
+  startapp_CCS811();
+
   setMode_CCS811(0x10);
 
   LOG_INFO("YOO ---1\r");
