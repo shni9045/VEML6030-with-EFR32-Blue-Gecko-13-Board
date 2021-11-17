@@ -78,7 +78,7 @@
 #define LETIMER_ON_TIME_MS (175)
 
 // Macro Definition for Total LED blink period
-#define LETIMER_PERIOD_MS (3000)
+#define LETIMER_PERIOD_MS (1000)
 
 
 
