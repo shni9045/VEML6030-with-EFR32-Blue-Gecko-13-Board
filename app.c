@@ -155,7 +155,7 @@ SL_WEAK void app_process_action(void)
 
     case evtLETIMER0_UF:{
 
-        read_temp_si7021();
+        read_ALS_VLM6030();
         //gpioLed0SetOn();
 
 
@@ -172,15 +172,6 @@ SL_WEAK void app_process_action(void)
 
   }
 
-
-
-  /*gpioLed0SetOn();
-
-  timerWaitUs(1000000);
-
-  gpioLed0SetOff();
-
-  timerWaitUs(1000000);*/
 
 
 }

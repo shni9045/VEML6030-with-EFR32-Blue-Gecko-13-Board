@@ -27,32 +27,13 @@
 void I2C_init(void);
 
 /*
- * Function to read from buffer of Si7021
- * PARAMTERS - NONE
- * RETURNS   - read buffer
- */
-uint8_t* I2C_Read_Si7021(void);
-
-/*
- * Function to write command to Si7021
- * PARAMTERS - NONE
- * RETURNS   - True for Success , False for failure
- */
-bool I2C_Write_Si7021(void);
-
-/*
- * Function to enable/disable Si7021
- * PARAMTERS - State to enable/disable
- * RETURNS   - NONE
- */
-void Enable_si7021(bool state);
-
-/*
- * Function to perform temperature read fro Si7021
+ * Function to perform ambient light read from VLM6030
  * PARAMTERS - NONE
  * RETURNS   - Converted temperature value
  */
-uint16_t read_temp_si7021(void);
+uint16_t read_ALS_VLM6030(void);
+
+
 
 bool I2C_Write_VEML6030init(void);
 
