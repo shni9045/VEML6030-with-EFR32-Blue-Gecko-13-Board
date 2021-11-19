@@ -11,22 +11,11 @@
 
 #include "src/log.h"
 
-// CCS811 I2C Address
-#define CCS811_I2C_ADDR (0xB6)
+// Si7021 I2C Address
+#define SI70_I2C_ADDR (0x48)
 
-#define CCS811_ADDR_ALG_RESULT_DATA (0x02)
-
-#define CCS811_ADDR_APP_START (0xF4)
-
-#define CCS811_ADDR_STATUS (0x00)
-
-#define CCS811_ADDR_HW_ID (0x20)
-
-#define CCS811_ADDR_MEASURE_MODE (0x01)
-
-#define CCS811_HW_ID (0x81)
-
-
+// Measure temperature No Hold Master Mode
+#define MEASURE_TEMP_CMD (0x04)
 
 void I2C_init(void){
 
@@ -56,311 +45,288 @@ void I2C_init(void){
 
 }
 
-void Enable_CCS811(bool state){
+
+uint8_t* I2C_Read_Si7021(void){
+
+  // Allocate Memory for read buffer to store temperature data
+  uint8_t *temp_data=(uint8_t*)malloc(sizeof(uint8_t)*2);
+
+  I2C_TransferReturn_TypeDef check_transfer;
+
+  // Assign address, set read flag and assign buffer
+  I2C_TransferSeq_TypeDef read = {
+
+      .addr = SI70_I2C_ADDR<<1,
+      .flags = I2C_FLAG_READ,
+      .buf[0].data = temp_data,
+      .buf[0].len = sizeof(temp_data),
+
+
+  };
+
+  // Perform I2C transfer
+  check_transfer=I2CSPM_Transfer(I2C0,&read);
+
+  // Wait till No acknowledgement is received
+  while(check_transfer == i2cTransferNack);
+
+  // Return temperature
+  return temp_data;
+
+}
+
+
+bool I2C_Write_Si7021(void){
+
+  // Measure temperature No Hold Master Mode command
+  uint8_t command = MEASURE_TEMP_CMD;
+
+  I2C_TransferReturn_TypeDef check_transfer;
+
+  // Assign address, set write flag  and pass command to buffer
+  I2C_TransferSeq_TypeDef write ={
+
+      .addr = SI70_I2C_ADDR<<1,
+      .flags = I2C_FLAG_WRITE,
+
+      .buf[0].data = &command,
+      .buf[0].len = 1,
+
+  };
+
+  // Perform I2C transfer
+  check_transfer=I2CSPM_Transfer(I2C0,&write);
+
+  // Map Return status of I2C transfer
+  switch(check_transfer){
+
+    case i2cTransferInProgress:{
+      LOG_INFO("\n\rTransfer In Progress");
+      break;
+    }
+
+    case i2cTransferDone:{
+
+      return true;
+      break;
+
+    }
+
+    case i2cTransferNack:{
+      LOG_ERROR("\n\rNACK Received");
+      break;
+    }
+
+    case i2cTransferBusErr:{
+      LOG_ERROR("\n\rBus Error");
+       break;
+     }
+
+    case i2cTransferArbLost:{
+
+      LOG_ERROR("\n\rArbitration lost");
+        break;
+      }
+
+    case i2cTransferUsageFault:{
+
+      LOG_ERROR("\n\rUsage Fault");
+        break;
+      }
+
+    case i2cTransferSwFault:{
+
+      LOG_ERROR("\n\rSw Fault");
+      break;
+      }
+
+    default:{
+
+      break;
+    }
+
+  }
+
+  return false;
+
+}
+
+bool I2C_Write_VEML6030init(void){
+
+  // Measure temperature No Hold Master Mode command
+  uint8_t command;
+  uint8_t commanddata[2];
+
+  command = 0x00;
+  commanddata[0] = 0x00;
+  commanddata[1] = 0x20;
+
+  I2C_TransferReturn_TypeDef check_transfer;
+
+  // Assign address, set write flag  and pass command to buffer
+  I2C_TransferSeq_TypeDef write ={
+
+      .addr = SI70_I2C_ADDR<<1,
+      .flags = I2C_FLAG_WRITE_WRITE,
+
+      .buf[0].data = &command,
+      .buf[0].len = 1,
+
+      .buf[1].data = commanddata,
+      .buf[1].len = 2,
+
+
+
+  };
+
+  // Perform I2C transfer
+  check_transfer=I2CSPM_Transfer(I2C0,&write);
+
+  // Map Return status of I2C transfer
+  switch(check_transfer){
+
+    case i2cTransferInProgress:{
+      LOG_INFO("\n\rTransfer In Progress");
+      break;
+    }
+
+    case i2cTransferDone:{
+
+      return true;
+      break;
+
+    }
+
+    case i2cTransferNack:{
+      LOG_ERROR("\n\rNACK Received");
+      break;
+    }
+
+    case i2cTransferBusErr:{
+      LOG_ERROR("\n\rBus Error");
+       break;
+     }
+
+    case i2cTransferArbLost:{
+
+      LOG_ERROR("\n\rArbitration lost");
+        break;
+      }
+
+    case i2cTransferUsageFault:{
+
+      LOG_ERROR("\n\rUsage Fault");
+        break;
+      }
+
+    case i2cTransferSwFault:{
+
+      LOG_ERROR("\n\rSw Fault");
+      break;
+      }
+
+    default:{
+
+      break;
+    }
+
+  }
+
+  return false;
+
+}
+
+
+void Enable_si7021(bool state){
 
   // Set Enable Pin high
   if (state == true){
 
-      GPIO_PinOutSet(gpioPortA,3);
+      GPIO_PinOutSet(gpioPortD,15);
 
   }
 
   // Set Enable Pin low
   else if (state == false){
 
-      GPIO_PinOutClear(gpioPortA,3);
+      GPIO_PinOutClear(gpioPortD,15);
 
   }
 
 
 }
 
-void Wake_CCS811(bool state){
+uint16_t read_temp_si7021(void){
 
-  // Set Enable Pin high
-  if (state == true){
+  // Temporary pointer to point to buffer and read from
+  /*uint8_t *temp_d;
 
-      //GPIO_PinOutSet(gpioPortD,10);
-      //GPIO_PinOutClear(gpioPortA,2);
-      GPIO_PinOutSet(gpioPortA,2);
+  uint16_t temp = 0;
 
-  }
+  GPIO_PinModeSet(gpioPortD, 15, gpioModePushPull, false);
 
-  // Set Enable Pin low
-  else if (state == false){
+  // Check if write is successful
+  if(I2C_Write_Si7021() == true){
 
-      //GPIO_PinOutClear(gpioPortD,10);
-      //GPIO_PinOutSet(gpioPortA,2);
-      GPIO_PinOutClear(gpioPortA,2);
+      temp_d = I2C_Read_Si7021();
 
-  }
+      // Combine 8 bit words by left shiffting MSB by 8
+      temp=(temp_d[0])+(256*temp_d[1]);
 
 
-}
+       // Free allocated buffer
+      free(temp_d);
 
+      // LOG the temperature
+      LOG_INFO("Current ALS Value : %d\r",(int32_t)temp);
 
-
-uint32_t init_CCS811(void){
-
-  uint8_t id;
-  uint32_t check;
-
-  //Enable_CCS811(true);
-  Wake_CCS811(true);
-
-
-  // Wait for Power up time
-  timerWaitUs(100000);
-
-
-  check  =  readMailbox_CCS811(CCS811_ADDR_HW_ID, 1, &id);
-
-  LOG_INFO("HARDWARE ID : %02X\r",id);
-
-  if (check != 1 && id != CCS811_HW_ID){
-
-      LOG_ERROR("Initialize CCS811 failed\r");
-      return 0;
+      // Return temperature after converting temp code to celsius
+      return (1);
 
   }
 
+  return 0;*/
 
-  Wake_CCS811(false);
-
-  return 1;
-
-
-}
-
-uint32_t readMailbox_CCS811(uint8_t id, uint8_t length, uint8_t *data){
-
-  I2C_TransferSeq_TypeDef seq;
-  I2C_TransferReturn_TypeDef ret;
-
-  uint8_t write_data[1];
-
-
-  Wake_CCS811(true);
-
-  write_data[0] = id;
-
-
-  seq.addr = CCS811_I2C_ADDR;
-  seq.flags = I2C_FLAG_WRITE_READ;
-  seq.buf[0].data = write_data;
-  seq.buf[0].len = 1;
-
-
-  seq.buf[1].data = data;
-  seq.buf[1].len = length;
-
-
-  ret = I2CSPM_Transfer(I2C0, &seq);
-
-  if (ret != i2cTransferDone){
-
-      LOG_ERROR("i2c transfer failed\r");
-      return 0;
-
-  }
-
-
-  Wake_CCS811(false);
-
-  return 1;
-
-}
-
-uint32_t setappmode_CCS811(void){
-
-  I2C_TransferSeq_TypeDef seq;
-  I2C_TransferReturn_TypeDef ret;
-
-  uint8_t read_data[2];
-  uint8_t write_data[1];
-
-  Wake_CCS811(true);
-
-  write_data[0] = CCS811_ADDR_APP_START;
-
-  seq.addr = CCS811_I2C_ADDR;
-  seq.flags = I2C_FLAG_WRITE;
-
-  seq.buf[0].data = write_data;
-  seq.buf[0].len = 1;
-
-  seq.buf[1].data = read_data;
-  seq.buf[1].len = 0;
-
-
-  ret = I2CSPM_Transfer(I2C0, &seq);
-
-   if (ret != i2cTransferDone){
-
-       LOG_ERROR("i2c transfer failed\r");
-       return 0;
-
-   }
-
-
-   Wake_CCS811(false);
-
-   return 1;
-
-}
-
-uint32_t startapp_CCS811(void){
-
-  uint32_t result;
-  uint8_t status;
-
-  result  = readMailbox_CCS811(CCS811_ADDR_STATUS, 1, &status);
-
-  if ((status & 0x10 ) != 0x10){
-
-    LOG_ERROR("Application Missing\r");
-    return 0;
-
-  }
-
-  result += setappmode_CCS811();
-
-  result = readMailbox_CCS811(CCS811_ADDR_STATUS,1,&status);
-
-  if ((status & 0x90 ) != 0x90){
-
-      LOG_ERROR("Error in setting Application Mode\r");
-      return 0;
-  }
-
-
-  return 1;
-
-
-}
-
-
-uint32_t setMode_CCS811(uint8_t mode){
+    uint16_t light = 0;
 
     I2C_TransferSeq_TypeDef seq;
     I2C_TransferReturn_TypeDef ret;
 
-    uint8_t read_data[1];
-    uint8_t write_data[2];
+    uint8_t read_data[2];
+    uint8_t write_data[1];
 
-    Wake_CCS811(true);
+    write_data[0] = 0x04;
 
-    mode = (mode & 0x38);
 
-    write_data[0] = CCS811_ADDR_MEASURE_MODE;
-
-    write_data[1] = mode;
-
-    seq.addr = CCS811_I2C_ADDR;
-    seq.flags = I2C_FLAG_WRITE;
-
+    seq.addr = SI70_I2C_ADDR<<1;
+    seq.flags = I2C_FLAG_WRITE_READ;
     seq.buf[0].data = write_data;
-    seq.buf[0].len = 2;
+    seq.buf[0].len = 1;
+
 
     seq.buf[1].data = read_data;
-    seq.buf[1].len = 0;
+    seq.buf[1].len = 2;
 
 
     ret = I2CSPM_Transfer(I2C0, &seq);
 
-     if (ret != i2cTransferDone){
+   // while(ret == i2cTransferNack);
 
-         LOG_ERROR("i2c transfer failed\r");
-         return 0;
+    if (ret != i2cTransferDone){
 
-     }
+        LOG_ERROR("i2c transfer failed\r");
+        return 0;
+
+    }
+
+    // Combine 8 bit words by left shiffting MSB by 8
+    light =(read_data[0])+(256*read_data[1]);
+
+    // LOG the temperature
+    LOG_INFO("Current ALS Value : %d\r",(int32_t)light);
 
 
-     Wake_CCS811(false);
 
-     return 1;
-
-
-}
-
-
-
-uint32_t measurequality_CCS811(uint16_t *eco2,uint16_t *tvoc){
-
-  I2C_TransferSeq_TypeDef seq;
-  I2C_TransferReturn_TypeDef ret;
-
-  uint8_t read_data[4];
-  uint8_t write_data[1];
-
-  *eco2 = 0;
-  *tvoc = 0;
-
-  Wake_CCS811(true);
-
-  write_data[0] = CCS811_ADDR_ALG_RESULT_DATA;
-
-   seq.addr = CCS811_I2C_ADDR;
-   seq.flags = I2C_FLAG_WRITE;
-
-   seq.buf[0].data = write_data;
-   seq.buf[0].len = 1;
-
-   seq.buf[1].data = read_data;
-   seq.buf[1].len = 4;
-
-   ret = I2CSPM_Transfer(I2C0, &seq);
-
-   if (ret != i2cTransferDone){
-
-       LOG_ERROR("i2c transfer failed\r");
-       return 0;
-
-   }
-
-   *eco2 = ((uint16_t ) read_data[0] << 8 ) + (uint16_t) read_data[1];
-   *tvoc = ((uint16_t ) read_data[2] << 8 ) + (uint16_t) read_data[3];
-
-   Wake_CCS811(false);
-
-   return 1;
-
+    return 1;
 
 }
-
-bool dataavailaible( void ){
-
-  bool state = false;
-  uint32_t status;
-  uint8_t reg;
-
-  uint32_t status2;
-  uint8_t reg2;
-
-  status = readMailbox_CCS811(CCS811_ADDR_STATUS, 1, &reg);
-
-  if ((status == 1) && ((reg & 0x08) == 0x08)){
-
-      state = true;
-
-  }
-
-  else if ((status == 1) && ((reg & 0x01) == 0x01)){
-
-      LOG_ERROR("ERROR OCCURED in reading status register\r");
-
-      status2 = readMailbox_CCS811(0xe0, 1, &reg2);
-
-      if (status2){
-
-          LOG_INFO("ERROR REGISTER : %02X\r",reg2);
-
-      }
-
-  }
-
-  return state;
-
-}
-
-

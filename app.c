@@ -120,11 +120,7 @@ SL_WEAK void app_init(void)
   //Start timer
   Timer_Onoff(true);
 
-  init_CCS811();
-
-  startapp_CCS811();
-
-  setMode_CCS811(0x10);
+  I2C_Write_VEML6030init();
 
   LOG_INFO("YOO ---1\r");
 
@@ -151,7 +147,7 @@ SL_WEAK void app_process_action(void)
   //         later assignments.
 
 
- /* uint32_t event;
+  uint32_t event;
 
   event=getNextEvent();
 
@@ -159,7 +155,7 @@ SL_WEAK void app_process_action(void)
 
     case evtLETIMER0_UF:{
 
-        //read_temp_si7021();
+        read_temp_si7021();
         //gpioLed0SetOn();
 
 
@@ -173,16 +169,6 @@ SL_WEAK void app_process_action(void)
      }
 
     default: break;
-
-  }*/
-
-  if ( dataavailaible() ){
-
-      measurequality_CCS811(&eco2,&tvoc);
-
-      LOG_INFO("YOO\r");
-
-      LOG_INFO("___CO2 = %d tvoc=%d\r",(int32_t)eco2,(int32_t)tvoc);
 
   }
 
