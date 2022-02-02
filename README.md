@@ -1,2 +1,5 @@
-# ecen5823-f21-assignments
-Holds the starter code for Fall 2021
+# C code for Interfacing Ambient Light Sensor VEML6030 with Silabs Blue Gecko 13 Board
+
+## 
+
+##
